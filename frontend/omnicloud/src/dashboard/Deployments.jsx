@@ -1,0 +1,2 @@
+import { Rocket } from "lucide-react";
+export default function Deployments(){return <div className="oc-page"><h1>Deployments</h1><section className="oc-card"><h2>Deployment history · 0</h2><div className="oc-empty"><Rocket/><b>No deployments yet</b><span>Deployment history appears when workflows are connected.</span></div></section></div>}

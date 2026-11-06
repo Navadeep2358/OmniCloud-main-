@@ -1,0 +1,108 @@
+/* Keep the app shell stationary; only its main content pane scrolls. */
+.oc-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.oc-sidebar {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.oc-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.oc-topbar {
+  flex: 0 0 62px;
+}
+
+.oc-content {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 600px) {
+  .oc-shell {
+    display: flex;
+  }
+
+  .oc-sidebar {
+    display: flex;
+    flex: 0 0 72px;
+    width: 72px;
+    gap: 7px;
+    padding: 12px 8px;
+  }
+
+  .oc-brand {
+    justify-content: center;
+    margin: 0 0 10px;
+    padding: 0;
+  }
+
+  .oc-brand-name,
+  .oc-sidebar > small {
+    display: none;
+  }
+
+  .oc-sidebar button {
+    justify-content: center;
+    gap: 0;
+    padding: 12px 8px;
+    font-size: 0;
+  }
+
+  .oc-signout {
+    margin-top: auto;
+  }
+
+  .oc-topbar {
+    flex-basis: 56px;
+    padding: 0 10px;
+  }
+
+  .oc-topbar > span {
+    font-size: 11px;
+  }
+
+  .oc-topbar button {
+    gap: 5px;
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .oc-user-chip {
+    max-width: 110px;
+    overflow: hidden;
+    padding: 6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .oc-content {
+    padding: 14px;
+  }
+}
