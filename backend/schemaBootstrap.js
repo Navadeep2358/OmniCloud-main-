@@ -41,6 +41,11 @@ export function buildAwsProfileColumnUpgrade(columns){
  return changes;
 }
 
+export function buildAwsSsoLoginColumnUpgrade(columns){
+ const byName=new Set(columns.map(column=>String(column.COLUMN_NAME).toLowerCase()));
+ return byName.has("message")?[]:["ADD COLUMN message VARCHAR(500) NULL"];
+}
+
 export function buildTerraformDeploymentColumnUpgrade(columns){
  const byName=new Map(columns.map(column=>[String(column.COLUMN_NAME).toLowerCase(),column]));
  const changes=[];
@@ -50,20 +55,28 @@ export function buildTerraformDeploymentColumnUpgrade(columns){
  return changes;
 }
 
+export function buildAppDeploymentColumnUpgrade(columns){
+ const byName=new Set(columns.map(column=>String(column.COLUMN_NAME).toLowerCase()));
+ const changes=[];
+ if(!byName.has("source_git_url"))changes.push("ADD COLUMN source_git_url VARCHAR(512) NULL");
+ if(!byName.has("source_branch"))changes.push("ADD COLUMN source_branch VARCHAR(128) NULL");
+ return changes;
+}
+
 export async function initializeDatabaseSchema({
  databaseName=process.env.MYSQL_DATABASE||"omnicloud_auth",
  host=process.env.MYSQL_HOST||"127.0.0.1",
  port=Number(process.env.MYSQL_PORT||3306),
  user=process.env.MYSQL_USER||"root",
  password=process.env.MYSQL_PASSWORD||"",
+ createDatabase=String(process.env.MYSQL_CREATE_DATABASE||"true").toLowerCase()!=="false",
  createConnection=mysql.createConnection,
  schemaPath=resolve(here,"schema.sql"),
 }={}){
  if(!/^[A-Za-z0-9_-]{1,64}$/.test(databaseName))throw new Error("MYSQL_DATABASE must be a simple MySQL database name containing only letters, numbers, underscores, or hyphens.");
- const connection=await createConnection({host,port,user,password,charset:"utf8mb4"});
+ const connection=await createConnection({host,port,user,password,charset:"utf8mb4",...(String(process.env.MYSQL_SSL||"false").toLowerCase()==="true"?{ssl:{rejectUnauthorized:true}}:{}),...(!createDatabase?{database:databaseName}:{})});
  try{
-  await connection.query(`CREATE DATABASE IF NOT EXISTS \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`);
-  await connection.changeUser({database:databaseName});
+  if(createDatabase){await connection.query(`CREATE DATABASE IF NOT EXISTS \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`);await connection.changeUser({database:databaseName})}
   const schemaSql=await readFile(schemaPath,"utf8");
   for(const statement of splitSchemaStatements(schemaSql))await connection.query(statement);
   const [columns]=await connection.query("SELECT COLUMN_NAME, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='cloud_connections'",[databaseName]);
@@ -75,9 +88,15 @@ export async function initializeDatabaseSchema({
   const [awsColumns]=await connection.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='cloud_connections'",[databaseName]);
   const awsChanges=buildAwsProfileColumnUpgrade(awsColumns);
   if(awsChanges.length)await connection.query(`ALTER TABLE cloud_connections ${awsChanges.join(", ")}`);
+  const [awsLoginColumns]=await connection.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='aws_sso_logins'",[databaseName]);
+  const awsLoginChanges=buildAwsSsoLoginColumnUpgrade(awsLoginColumns);
+  if(awsLoginChanges.length)await connection.query(`ALTER TABLE aws_sso_logins ${awsLoginChanges.join(", ")}`);
   const [deploymentColumns]=await connection.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='terraform_deployments'",[databaseName]);
   const deploymentChanges=buildTerraformDeploymentColumnUpgrade(deploymentColumns);
   if(deploymentChanges.length)await connection.query(`ALTER TABLE terraform_deployments ${deploymentChanges.join(", ")}`);
+  const [appDeploymentColumns]=await connection.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='app_deployments'",[databaseName]);
+  const appDeploymentChanges=buildAppDeploymentColumnUpgrade(appDeploymentColumns);
+  if(appDeploymentChanges.length)await connection.query(`ALTER TABLE app_deployments ${appDeploymentChanges.join(", ")}`);
  }finally{
   await connection.end();
  }

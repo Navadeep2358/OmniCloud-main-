@@ -1,4 +1,9 @@
 .env
+.env.*
+!.env.example
 node_modules/
 .terraform-state/
+.terraform-plugin-cache/
 .omnicloud-aws-users/
+coverage/
+*.log

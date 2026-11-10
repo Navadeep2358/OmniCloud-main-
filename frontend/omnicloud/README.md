@@ -1,16 +1,15 @@
-# React + Vite
+# OmniCloud frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Vercel deployment
 
-Currently, two official plugins are available:
+Connect the frontend repository to Vercel with the repository root as the project root. Vercel detects the Vite app; the build command is `npm run build` and the output directory is `dist`. `vercel.json` proxies `/api/*` to the Render backend and sends SPA paths to `index.html`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Set the Render backend's `OMNICLOUD_PUBLIC_URL` to the final Vercel HTTPS origin. AWS uses device authorization, so no OAuth callback URI is needed. The API proxy keeps sign-in requests on the Vercel origin.
 
-## React Compiler
+## Netlify deployment (alternative)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Connect this repository to Netlify and use its root directory as the site root. `netlify.toml` configures `npm ci && npm run build`, publishes `dist`, proxies `/api/*` to the Render API, and sends other paths to the SPA entry point. Create the Render service first and update the API hostname in `netlify.toml` if Render assigned a different service URL.
 
-## Expanding the Oxlint configuration
+After Netlify assigns the final HTTPS site URL, set that exact origin as the backend's `OMNICLOUD_PUBLIC_URL`. AWS uses device authorization, so no OAuth callback URI is needed. The API proxy keeps sign-in requests on the Netlify origin.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Use Node.js 22 for Netlify builds. The frontend uses relative `/api` requests, so do not set a separate browser API URL or expose backend secrets in frontend environment variables.

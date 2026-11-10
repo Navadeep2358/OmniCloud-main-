@@ -35,6 +35,8 @@ test("final schema is idempotently initialized without replaying AWS disconnect 
     {COLUMN_NAME:"azure_subscription_id",IS_NULLABLE:"YES"},
     {COLUMN_NAME:"azure_tenant_id",IS_NULLABLE:"YES"},
     {COLUMN_NAME:"azure_resource_group",IS_NULLABLE:"YES"},
+    {COLUMN_NAME:"aws_profile",IS_NULLABLE:"YES"},
+    {COLUMN_NAME:"aws_role_name",IS_NULLABLE:"YES"},
    ]];
    return [{affectedRows:0}];
   },

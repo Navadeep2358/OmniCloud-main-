@@ -12,6 +12,7 @@ import { registerGcpRoutes } from "./gcpConnection.js";
 import { registerGcpTerraformRoutes } from "./gcpTerraformRoutes.js";
 import { registerAzureRoutes, revokeAzureDelegation } from "./azureConnection.js";
 import { registerAzureTerraformRoutes } from "./azureTerraformRoutes.js";
+import { registerSimulatedCloudRoutes } from "./simulatedCloudRoutes.js";
 import { initializeDatabaseSchema } from "./schemaBootstrap.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +33,7 @@ const pool = mysql.createPool({
   user: process.env.MYSQL_USER || "root",
   password: process.env.MYSQL_PASSWORD || "",
   database: process.env.MYSQL_DATABASE || "omnicloud_auth",
+  ...(String(process.env.MYSQL_SSL || "false").toLowerCase() === "true" ? { ssl: { rejectUnauthorized: true } } : {}),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -46,11 +48,17 @@ const mailer = gmailUser && gmailAppPassword && !gmailAppPassword.includes("repl
   ? nodemailer.createTransport({
       service: "gmail",
       auth: { user: gmailUser, pass: gmailAppPassword },
+      // Keep auth requests inside the hosting platform's HTTP request window
+      // when Gmail SMTP is unreachable or the credential is rejected.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     })
   : null;
 
 const app = express();
 app.disable("x-powered-by");
+if (isProduction) app.set("trust proxy", 1);
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -396,6 +404,7 @@ app.post("/api/auth/register", authLimiter, asyncRoute(async (req, res) => {
   try {
     await issuePendingRegistrationCode(email, { name, mobile, passwordHash });
   } catch (error) {
+    console.error("Registration verification email failed:", error.code || error.name || "SMTP_ERROR");
     return res.status(error.status || 503).json({
       message: error.status ? error.message
         : "We couldn’t send the verification email. Check MySQL and Gmail settings, then try again.",
@@ -440,6 +449,7 @@ app.post("/api/auth/resend-verification", authLimiter, asyncRoute(async (req, re
     try {
       await issuePendingRegistrationCode(email, pending.registration);
     } catch (error) {
+      console.error("Verification email resend failed:", error.code || error.name || "SMTP_ERROR");
       return res.status(error.status || 503).json({
         message: error.status ? error.message : "We couldn’t send the email. Try again later.",
       });
@@ -531,20 +541,23 @@ app.post("/api/auth/logout", asyncRoute(async (req, res) => {
 
 registerSettingsRoutes(app, { pool, requireUser });
 registerCloudRoutes(app, { pool, requireUser, disconnectAzure: revokeAzureDelegation });
+registerSimulatedCloudRoutes(app, { pool, requireUser });
 registerGcpRoutes(app, { pool, requireUser });
 registerGcpTerraformRoutes(app, { pool, requireUser });
 registerAzureRoutes(app, { pool, requireUser });
 registerAzureTerraformRoutes(app, { pool, requireUser });
 app.use("/api", (_req, res) => res.status(404).json({ message: "API route not found." }));
 
-const frontendDist = resolve(here, "../frontend/omnicloud/dist");
-app.use(express.static(frontendDist));
-app.use((req, res, next) => {
-  if (req.method !== "GET") return next();
-  return res.sendFile(resolve(frontendDist, "index.html"), (error) => {
-    if (error) next(error);
+if (String(process.env.SERVE_FRONTEND || "true").toLowerCase() !== "false") {
+  const frontendDist = resolve(here, "../frontend/omnicloud/dist");
+  app.use(express.static(frontendDist));
+  app.use((req, res, next) => {
+    if (req.method !== "GET") return next();
+    return res.sendFile(resolve(frontendDist, "index.html"), (error) => {
+      if (error) next(error);
+    });
   });
-});
+}
 
 app.use((error, _req, res, _next) => {
   console.error(error);

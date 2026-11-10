@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildAwsTerraformConfig,getTerraformCatalog,newBucketName,validateAwsDeployment} from "../terraformService.js";
+import {buildAwsTerraformConfig,createTerraformInitQueue,getTerraformCatalog,newBucketName,validateAwsDeployment} from "../terraformService.js";
 
-test("AWS catalog exposes S3 and EC2 deployments",()=>{
- assert.deepEqual(getTerraformCatalog().map(item=>item.id),["private_s3_bucket","ec2_instance"]);
+test("AWS catalog exposes S3, EC2, RDS, and DynamoDB deployments",()=>{
+ assert.deepEqual(getTerraformCatalog().map(item=>item.id),["private_s3_bucket","ec2_instance","rds_mysql_instance","dynamodb_table"]);
 });
 
 test("S3 Terraform config creates a private encrypted bucket",()=>{
@@ -36,4 +36,12 @@ test("generated bucket names fit S3 DNS naming constraints",()=>{
  const name=newBucketName("123456789012");
  assert.match(name,/^omnicloud-123456789012-[a-f0-9]{10}$/);
  assert.ok(name.length<=63);
+});
+
+test("Terraform init queue serializes calls and continues after a failed init",async()=>{
+ const withLock=createTerraformInitQueue();let active=0,maxActive=0;const order=[];
+ const run=(name,fail=false)=>withLock(async()=>{active++;maxActive=Math.max(maxActive,active);order.push(`${name}:start`);await new Promise(resolve=>setTimeout(resolve,10));active--;order.push(`${name}:end`);if(fail)throw new Error("init failed");return name});
+ const first=run("first"),second=run("second",true),third=run("third");
+ assert.equal(await first,"first");await assert.rejects(second,/init failed/);assert.equal(await third,"third");
+ assert.equal(maxActive,1);assert.deepEqual(order,["first:start","first:end","second:start","second:end","third:start","third:end"]);
 });

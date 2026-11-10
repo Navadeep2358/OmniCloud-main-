@@ -1,0 +1,71 @@
+services:
+  - type: web
+    name: omnibackend
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: omnibackend-data
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: SERVE_FRONTEND
+        value: "false"
+      - key: OMNICLOUD_LOCAL_DOCKER_BUILDS
+        value: "false"
+      - key: MYSQL_CREATE_DATABASE
+        value: "false"
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        value: "3306"
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: MYSQL_SSL
+        value: "true"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: AWS_SSO_TOKEN_ENCRYPTION_KEY
+        generateValue: true
+      - key: OMNICLOUD_PUBLIC_URL
+        sync: false
+      - key: AWS_SSO_START_URL
+        sync: false
+      - key: AWS_SSO_ISSUER_URL
+        sync: false
+      - key: AWS_SSO_REGION
+        sync: false
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: TERRAFORM_BIN
+        value: /usr/local/bin/terraform
+      - key: TERRAFORM_STATE_DIR
+        value: /var/data/terraform-state
+      - key: TERRAFORM_PLUGIN_CACHE_DIR
+        value: /var/data/terraform-plugin-cache
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: OMNICLOUD_GCP_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: OMNICLOUD_AZURE_AUTH_MODE
+        value: service_principal
+      - key: ARM_TENANT_ID
+        sync: false
+      - key: ARM_CLIENT_ID
+        sync: false
+      - key: ARM_CLIENT_SECRET
+        sync: false

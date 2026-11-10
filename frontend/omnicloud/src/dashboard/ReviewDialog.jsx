@@ -1,0 +1,6 @@
+import {AlertTriangle,Check,LoaderCircle,X} from "lucide-react";
+
+export default function ReviewDialog({review,onCancel,onConfirm,busy=false}){
+ if(!review)return null;
+ return <div className="oc-dialog-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)onCancel()}}><section className="oc-review-dialog" role="dialog" aria-modal="true" aria-labelledby="oc-review-title"><button className="oc-dialog-close" aria-label="Close review" disabled={busy} onClick={onCancel}><X size={18}/></button><span className="oc-dialog-icon"><AlertTriangle size={21}/></span><small>REVIEW ACTION</small><h2 id="oc-review-title">{review.title}</h2><p>{review.summary}</p>{review.changes?.length>0&&<div className="oc-dialog-changes">{review.changes.map((change,index)=><code key={`${change}-${index}`}>{change}</code>)}</div>}<div className="oc-dialog-cost"><b>Cost and impact</b><span>{review.cost}</span></div><div className="oc-dialog-actions"><button className="oc-copy" disabled={busy} onClick={onCancel}>Cancel</button><button className="primary" disabled={busy} onClick={onConfirm}>{busy?<><LoaderCircle size={16} className="oc-spin"/>Applying…</>:<><Check size={16}/>{review.confirmLabel||"Apply reviewed plan"}</>}</button></div></section></div>
+}

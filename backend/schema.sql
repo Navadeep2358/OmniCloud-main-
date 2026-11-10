@@ -73,6 +73,52 @@ CREATE TABLE IF NOT EXISTS cloud_connections (
   KEY idx_cloud_connections_user_provider (user_id, provider)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS aws_sso_logins (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  state_hash CHAR(64) NOT NULL UNIQUE,
+  user_id BIGINT UNSIGNED NOT NULL,
+  region VARCHAR(24) NOT NULL,
+  client_id VARCHAR(256) NOT NULL,
+  client_secret_ciphertext TEXT NOT NULL,
+  code_verifier_ciphertext TEXT NOT NULL,
+  access_token_ciphertext MEDIUMTEXT NULL,
+  refresh_token_ciphertext MEDIUMTEXT NULL,
+  token_expires_at BIGINT NULL,
+  status VARCHAR(24) NOT NULL,
+  message VARCHAR(500) NULL,
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  KEY idx_aws_sso_logins_user (user_id),
+  CONSTRAINT aws_sso_logins_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS aws_sso_clients (
+  config_hash CHAR(64) NOT NULL PRIMARY KEY,
+  region VARCHAR(24) NOT NULL,
+  issuer_url VARCHAR(1024) NOT NULL,
+  redirect_uri VARCHAR(2048) NOT NULL,
+  client_id VARCHAR(512) NOT NULL,
+  client_secret_ciphertext TEXT NOT NULL,
+  authorization_endpoint VARCHAR(1024) NOT NULL,
+  client_secret_expires_at BIGINT NULL,
+  updated_at BIGINT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS aws_sso_tokens (
+  connection_id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  region VARCHAR(24) NOT NULL,
+  client_id VARCHAR(256) NOT NULL,
+  client_secret_ciphertext TEXT NOT NULL,
+  access_token_ciphertext MEDIUMTEXT NOT NULL,
+  refresh_token_ciphertext MEDIUMTEXT NULL,
+  token_expires_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL,
+  KEY idx_aws_sso_tokens_user (user_id),
+  CONSTRAINT aws_sso_tokens_connection_fk FOREIGN KEY (connection_id) REFERENCES cloud_connections(id) ON DELETE CASCADE,
+  CONSTRAINT aws_sso_tokens_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS terraform_deployments (
   id CHAR(36) NOT NULL PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,
@@ -170,4 +216,40 @@ CREATE TABLE IF NOT EXISTS azure_terraform_operations (
   updated_at BIGINT NOT NULL,
   KEY idx_azure_terraform_operations_owner (user_id, connection_id, status),
   KEY idx_azure_terraform_operations_deployment (deployment_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS simulated_cloud_resources (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  connection_id CHAR(36) NOT NULL,
+  provider VARCHAR(8) NOT NULL,
+  service VARCHAR(16) NOT NULL,
+  resource_name VARCHAR(80) NOT NULL,
+  region VARCHAR(48) NOT NULL,
+  hourly_rate DECIMAL(12,8) NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'running',
+  created_at BIGINT NOT NULL,
+  stopped_at BIGINT NULL,
+  KEY idx_simulated_resources_owner (user_id, connection_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS app_deployments (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  connection_id CHAR(36) NOT NULL,
+  display_name VARCHAR(80) NOT NULL,
+  source_git_url VARCHAR(512) NULL,
+  source_branch VARCHAR(128) NULL,
+  image_uri VARCHAR(255) NOT NULL,
+  region VARCHAR(32) NOT NULL,
+  cluster_name VARCHAR(128) NOT NULL,
+  service_name VARCHAR(128) NOT NULL,
+  task_definition_arn VARCHAR(512) NOT NULL,
+  container_port SMALLINT UNSIGNED NOT NULL,
+  subnet_ids_json LONGTEXT NOT NULL,
+  security_group_id VARCHAR(32) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL,
+  KEY idx_app_deployments_owner (user_id, connection_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

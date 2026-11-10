@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.*
+!.env.example
+.git
+.local-backend*.log
+.terraform-state
+.omnicloud-aws-users
+coverage
+npm-debug.log*

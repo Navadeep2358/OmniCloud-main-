@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {DescribeImagesCommand,DescribeInstancesCommand,DescribeKeyPairsCommand,DescribeSecurityGroupsCommand,DescribeSubnetsCommand} from "@aws-sdk/client-ec2";
+import {DescribeDBInstancesCommand} from "@aws-sdk/client-rds";
+import {DescribeTableCommand,ListTablesCommand} from "@aws-sdk/client-dynamodb";
 import {ListBucketsCommand} from "@aws-sdk/client-s3";
-import {GetCostForecastCommand} from "@aws-sdk/client-cost-explorer";
+import {GetCostAndUsageCommand,GetCostForecastCommand} from "@aws-sdk/client-cost-explorer";
 import {listAwsImages,loadAwsInventory} from "../awsInventoryService.js";
 
 test("AWS account inventory returns EC2 choices, buckets, and cost forecast",async()=>{
@@ -12,9 +14,9 @@ test("AWS account inventory returns EC2 choices, buckets, and cost forecast",asy
   if(command instanceof DescribeSecurityGroupsCommand)return {SecurityGroups:[{GroupId:"sg-1",GroupName:"default",VpcId:"vpc-1"}]};
   if(command instanceof DescribeKeyPairsCommand)return {KeyPairs:[{KeyName:"deploy",KeyPairId:"key-1",KeyType:"ed25519"}]};
   throw new Error(command.constructor.name);
- }},s3:{send:async command=>{assert.ok(command instanceof ListBucketsCommand);return {Buckets:[{Name:"sample-bucket"}]}}},cost:{send:async command=>{assert.ok(command instanceof GetCostForecastCommand);return {Total:{Amount:"123.45",Unit:"USD"}}}}};
+ }},rds:{send:async command=>{assert.ok(command instanceof DescribeDBInstancesCommand);return {DBInstances:[{DBInstanceIdentifier:"sample-db",DBInstanceStatus:"available",Engine:"mysql"}]}}},dynamodb:{send:async command=>{if(command instanceof ListTablesCommand)return {TableNames:["sample-table"]};assert.ok(command instanceof DescribeTableCommand);return {Table:{TableName:"sample-table",TableStatus:"ACTIVE"}}}},s3:{send:async command=>{assert.ok(command instanceof ListBucketsCommand);return {Buckets:[{Name:"sample-bucket"}]}}},cost:{send:async command=>{if(command instanceof GetCostAndUsageCommand)return {ResultsByTime:[]};assert.ok(command instanceof GetCostForecastCommand);return {Total:{Amount:"123.45",Unit:"USD"}}}}};
  const result=await loadAwsInventory({credentials:{},region:"ap-south-1",now:new Date("2026-11-05T00:00:00Z"),clients});
- assert.equal(result.instances[0].managedDeploymentId,"managed-id");assert.equal(result.subnets[0].id,"subnet-1");assert.equal(result.securityGroups[0].id,"sg-1");assert.equal(result.keyPairs[0].name,"deploy");assert.equal(result.buckets[0].name,"sample-bucket");assert.equal(result.costForecast.amount,123.45);assert.equal(result.costForecast.scope,"AWS account forecast");assert.deepEqual(result.serviceErrors,{});
+ assert.equal(result.instances[0].managedDeploymentId,"managed-id");assert.equal(result.subnets[0].id,"subnet-1");assert.equal(result.securityGroups[0].id,"sg-1");assert.equal(result.keyPairs[0].name,"deploy");assert.equal(result.buckets[0].name,"sample-bucket");assert.equal(result.rdsInstances[0].id,"sample-db");assert.equal(result.dynamodbTables[0].name,"sample-table");assert.equal(result.costForecast.amount,123.45);assert.equal(result.costForecast.scope,"AWS account forecast");assert.deepEqual(result.serviceErrors,{});
 });
 
 test("inventory returns partial results when a permission is missing",async()=>{
