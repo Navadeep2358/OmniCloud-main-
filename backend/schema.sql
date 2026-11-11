@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS simulated_cloud_resources (
   user_id BIGINT UNSIGNED NOT NULL,
   connection_id CHAR(36) NOT NULL,
   provider VARCHAR(8) NOT NULL,
-  service VARCHAR(16) NOT NULL,
+  service VARCHAR(32) NOT NULL,
   resource_name VARCHAR(80) NOT NULL,
   region VARCHAR(48) NOT NULL,
   hourly_rate DECIMAL(12,8) NOT NULL,

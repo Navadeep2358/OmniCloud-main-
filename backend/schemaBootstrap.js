@@ -63,6 +63,11 @@ export function buildAppDeploymentColumnUpgrade(columns){
  return changes;
 }
 
+export function buildSimulatedResourceColumnUpgrade(columns){
+ const service=columns.find(column=>String(column.COLUMN_NAME).toLowerCase()==="service");
+ return service&&Number(service.CHARACTER_MAXIMUM_LENGTH)<32?["MODIFY COLUMN service VARCHAR(32) NOT NULL"]:[];
+}
+
 export async function initializeDatabaseSchema({
  databaseName=process.env.MYSQL_DATABASE||"omnicloud_auth",
  host=process.env.MYSQL_HOST||"127.0.0.1",
@@ -94,6 +99,9 @@ export async function initializeDatabaseSchema({
   const [deploymentColumns]=await connection.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='terraform_deployments'",[databaseName]);
   const deploymentChanges=buildTerraformDeploymentColumnUpgrade(deploymentColumns);
   if(deploymentChanges.length)await connection.query(`ALTER TABLE terraform_deployments ${deploymentChanges.join(", ")}`);
+  const [simulatedResourceColumns]=await connection.query("SELECT COLUMN_NAME, CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",[databaseName,"simulated_cloud_resources"]);
+  const simulatedResourceChanges=buildSimulatedResourceColumnUpgrade(simulatedResourceColumns);
+  if(simulatedResourceChanges.length)await connection.query(`ALTER TABLE simulated_cloud_resources ${simulatedResourceChanges.join(", ")}`);
   const [appDeploymentColumns]=await connection.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='app_deployments'",[databaseName]);
   const appDeploymentChanges=buildAppDeploymentColumnUpgrade(appDeploymentColumns);
   if(appDeploymentChanges.length)await connection.query(`ALTER TABLE app_deployments ${appDeploymentChanges.join(", ")}`);
